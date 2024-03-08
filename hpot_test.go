@@ -2,7 +2,10 @@ package hpot_test
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -23,17 +26,18 @@ func TestHoneypotAcceptsConection(t *testing.T) {
 
 	client1 := mustConnect(t, port1)
 	client2 := mustConnect(t, port2)
-
 	client3 := mustConnect(t, port1)
 	client4 := mustConnect(t, port2)
 
 	want := []net.Addr{client1, client2, client3, client4}
 
-	// Fix race conditions here - check ports!
-	// temp hack!!!
-	time.Sleep(2 * time.Second)
-
 	got := pot.Records()
+
+	// wait for success
+	for len(got) < 4 {
+		time.Sleep(10 * time.Millisecond)
+		got = pot.Records()
+	}
 
 	if !cmp.Equal(want, got) {
 		t.Error(cmp.Diff(want, got))
@@ -62,4 +66,36 @@ func mustConnect(t *testing.T, port int) net.Addr {
 	}
 	defer conn.Close()
 	return conn.LocalAddr()
+}
+
+func TestPotStervesHTTPStatusPage(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, t *http.Request) {
+		fmt.Fprint(w, "Honeypot stats")
+	}))
+	defer ts.Close()
+
+	client := ts.Client()
+
+	// user behaviour
+	res, err := client.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatal(res.StatusCode)
+	}
+
+	got, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := "Honeypot stats"
+	if want != string(got) {
+		t.Errorf("want %s, got %s", want, got)
+	}
 }

@@ -119,7 +119,7 @@ func Main() int {
 	flag.Parse()
 	if len(flag.Args()) == 0 {
 		fmt.Println(usage)
-		return 0
+		return 1
 	}
 
 	ports, err := parsePorts(flag.Args()[0])

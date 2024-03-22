@@ -47,8 +47,8 @@ func (p *Pot) Records() []net.Addr {
 // to handle requests on incoming connections on given ports.
 func (p *Pot) ListenAndServe() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%d", p.NumConnections())
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%d\n", p.NumConnections())
 	})
 
 	s := &http.Server{
@@ -57,6 +57,9 @@ func (p *Pot) ListenAndServe() error {
 	}
 
 	go func() {
+		if p.Verbose {
+			fmt.Println("Starting metrics server on:", s.Addr)
+		}
 		if err := s.ListenAndServe(); err != nil {
 			panic(err)
 		}
@@ -116,6 +119,7 @@ In verbose mode (-v), reports all incoming connections.`
 
 func Main() int {
 	verbose := flag.Bool("v", false, "verbose output")
+	adminPort := flag.Int("admin", 8085, "admin port for reading metrics")
 	flag.Parse()
 	if len(flag.Args()) == 0 {
 		fmt.Println(usage)
@@ -130,6 +134,7 @@ func Main() int {
 
 	pot := NewHoneyPotServer()
 	pot.Verbose = *verbose
+	pot.AdminPort = *adminPort
 	pot.Ports = ports
 
 	if err := pot.ListenAndServe(); err != nil {

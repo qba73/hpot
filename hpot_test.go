@@ -63,7 +63,7 @@ func TestPotReturnsConnectionCount(t *testing.T) {
 	}()
 
 	got := getStats(t, pot.AdminPort)
-	want := "0"
+	want := "0\n"
 
 	if want != got {
 		t.Error(cmp.Diff(want, got))
@@ -73,7 +73,7 @@ func TestPotReturnsConnectionCount(t *testing.T) {
 	mustConnect(t, port)
 
 	got = getStats(t, pot.AdminPort)
-	want = "2"
+	want = "2\n"
 
 	if want != got {
 		t.Error(cmp.Diff(want, got))
@@ -83,7 +83,7 @@ func TestPotReturnsConnectionCount(t *testing.T) {
 func getStats(t *testing.T, port int) string {
 	t.Helper()
 
-	url := fmt.Sprintf("http://127.0.0.1:%d/stats", port)
+	url := fmt.Sprintf("http://127.0.0.1:%d/metrics", port)
 	res, err := http.Get(url)
 	for err != nil {
 		time.Sleep(10 * time.Millisecond)

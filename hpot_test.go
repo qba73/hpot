@@ -86,7 +86,7 @@ func getStats(t *testing.T, port int) string {
 	url := fmt.Sprintf("http://127.0.0.1:%d/metrics", port)
 	res, err := http.Get(url)
 	for err != nil {
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 		res, err = http.Get(url)
 	}
 	defer res.Body.Close()

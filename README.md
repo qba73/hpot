@@ -1,5 +1,6 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/qba73/hpot.svg)](https://pkg.go.dev/github.com/qba73/hpot)
 [![Go Report Card](https://goreportcard.com/badge/github.com/qba73/hpot)](https://goreportcard.com/report/github.com/qba73/hpot)
+[![Tests](https://github.com/qba73/hpot/actions/workflows/go.yml/badge.svg)](https://github.com/qba73/hpot/actions/workflows/go.yml)
 
 # hpot
 

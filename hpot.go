@@ -1,10 +1,13 @@
 package hpot
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -89,4 +92,48 @@ func (p *Pot) serve(l net.Listener) {
 
 		conn.Close()
 	}
+}
+
+func parsePorts(ports string) ([]int, error) {
+	var prts []int
+	px := strings.Split(ports, ",")
+	for _, p := range px {
+		p = strings.TrimSpace(p)
+		pr, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, err
+		}
+		prts = append(prts, pr)
+	}
+	return prts, nil
+}
+
+var usage = `Usage: hpot [-v] port,port,port
+
+Start the HopneyPot and listen on incoming connections on provided, coma separated ports.
+
+In verbose mode (-v), reports all incoming connections.`
+
+func Main() int {
+	verbose := flag.Bool("v", false, "verbose output")
+	flag.Parse()
+	if len(flag.Args()) == 0 {
+		fmt.Println(usage)
+		return 0
+	}
+
+	ports, err := parsePorts(flag.Args()[0])
+	if err != nil {
+		fmt.Println(usage)
+		return 1
+	}
+
+	pot := NewHoneyPotServer()
+	pot.Verbose = *verbose
+	pot.Ports = ports
+
+	if err := pot.ListenAndServe(); err != nil {
+		return 1
+	}
+	return 0
 }

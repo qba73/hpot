@@ -1,6 +1,7 @@
 package hpot_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -99,3 +100,88 @@ func TestPotStervesHTTPStatusPage(t *testing.T) {
 		t.Errorf("want %s, got %s", want, got)
 	}
 }
+
+func TestPotStervesStatisticsWithoutConnections(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, t *http.Request) {
+		fmt.Fprint(w, potStatsWithoutConnections)
+	}))
+	defer ts.Close()
+
+	client := ts.Client()
+
+	// user behaviour
+	res, err := client.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatal(res.StatusCode)
+	}
+
+	got, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var ps hpot.PotStats
+	if err := json.Unmarshal(got, &ps); err != nil {
+		t.Fatal(err)
+	}
+
+	want := hpot.PotStats{
+		Connections: 0,
+	}
+
+	if !cmp.Equal(want, ps) {
+		t.Errorf(cmp.Diff(want, ps))
+	}
+}
+
+func TestPotStervesStatisticsWithConnections(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, t *http.Request) {
+		fmt.Fprint(w, potStatsWithConnections)
+	}))
+	defer ts.Close()
+
+	client := ts.Client()
+
+	// user behaviour
+	res, err := client.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatal(res.StatusCode)
+	}
+
+	got, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var ps hpot.PotStats
+	if err := json.Unmarshal(got, &ps); err != nil {
+		t.Fatal(err)
+	}
+
+	want := hpot.PotStats{
+		Connections: 2,
+	}
+
+	if !cmp.Equal(want, ps) {
+		t.Errorf(cmp.Diff(want, ps))
+	}
+}
+
+var (
+	potStatsWithoutConnections = `{"connections": 0}`
+	potStatsWithConnections    = `{"connections": 2}`
+)

@@ -59,3 +59,8 @@ func StartHoneypotOnPorts(verbose bool, ports ...int) (*Pot, error) {
 	}
 	return p, nil
 }
+
+// PotStats holds information about attempted connections to the HoneyPot.
+type PotStats struct {
+	Connections int `json:"connections"`
+}

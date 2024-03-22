@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Pot represents a Honeypot.
@@ -52,8 +53,10 @@ func (p *Pot) ListenAndServe() error {
 	})
 
 	s := &http.Server{
-		Addr:    fmt.Sprintf(":%d", p.AdminPort),
-		Handler: mux,
+		Addr:         fmt.Sprintf(":%d", p.AdminPort),
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		Handler:      mux,
 	}
 
 	go func() {

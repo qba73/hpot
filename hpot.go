@@ -36,6 +36,13 @@ func (p *Pot) NumConnections() int {
 	return len(p.Records())
 }
 
+// OpenPorts returns the ports Pot is listening on.
+func (p *Pot) OpenPorts() []int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.Ports
+}
+
 // Records returns remote addresses representing incoming connections.
 func (p *Pot) Records() []net.Addr {
 	p.mu.Lock()
@@ -51,6 +58,9 @@ func (p *Pot) ListenAndServe() error {
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%d\n", p.NumConnections())
 	})
+	mux.HandleFunc("/ports", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%d\n", p.OpenPorts())
+	})
 
 	s := &http.Server{
 		Addr:         fmt.Sprintf(":%d", p.AdminPort),
@@ -61,7 +71,7 @@ func (p *Pot) ListenAndServe() error {
 
 	go func() {
 		if p.Verbose {
-			fmt.Println("Starting metrics server on:", s.Addr)
+			fmt.Println("Starting admin server on:", s.Addr)
 		}
 		if err := s.ListenAndServe(); err != nil {
 			panic(err)

@@ -80,6 +80,51 @@ func TestPotReturnsConnectionCount(t *testing.T) {
 	}
 }
 
+func TestPotReturnOpenPorts(t *testing.T) {
+	t.Parallel()
+
+	port := randomFreePort()
+	pot := hpot.NewHoneyPotServer()
+	pot.AdminPort = randomFreePort()
+	pot.Ports = []int{port}
+
+	go func() {
+		if err := pot.ListenAndServe(); err != nil {
+			panic(err)
+		}
+	}()
+
+	got := getOpenPorts(t, pot.AdminPort)
+	want := fmt.Sprintf("[%d]\n", port)
+
+	if want != got {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func getOpenPorts(t *testing.T, port int) string {
+	t.Helper()
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/ports", port)
+	res, err := http.Get(url)
+	for err != nil {
+		time.Sleep(20 * time.Millisecond)
+		res, err = http.Get(url)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatal(res.StatusCode)
+	}
+
+	got, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	return string(got)
+}
+
 func getStats(t *testing.T, port int) string {
 	t.Helper()
 

@@ -3,6 +3,7 @@ package hpot_test
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"testing"
@@ -21,6 +22,7 @@ func TestHoneypotAcceptsConection(t *testing.T) {
 	pot := hpot.NewHoneyPotServer()
 	pot.AdminPort = randomFreePort()
 	pot.Ports = []int{port1, port2}
+	pot.Log = *slog.New(slog.NewJSONHandler(io.Discard, nil))
 
 	go func() {
 		if err := pot.ListenAndServe(); err != nil {
@@ -55,6 +57,7 @@ func TestPotReturnsConnectionCount(t *testing.T) {
 	pot := hpot.NewHoneyPotServer()
 	pot.AdminPort = randomFreePort()
 	pot.Ports = []int{port}
+	pot.Log = *slog.New(slog.NewJSONHandler(io.Discard, nil))
 
 	go func() {
 		if err := pot.ListenAndServe(); err != nil {
@@ -80,13 +83,15 @@ func TestPotReturnsConnectionCount(t *testing.T) {
 	}
 }
 
-func TestPotReturnOpenPorts(t *testing.T) {
+func TestPotReportsOpenPortsItsListeningOn(t *testing.T) {
 	t.Parallel()
 
-	port := randomFreePort()
+	port1 := randomFreePort()
+	port2 := randomFreePort()
 	pot := hpot.NewHoneyPotServer()
 	pot.AdminPort = randomFreePort()
-	pot.Ports = []int{port}
+	pot.Ports = []int{port1, port2}
+	pot.Log = *slog.New(slog.NewJSONHandler(io.Discard, nil))
 
 	go func() {
 		if err := pot.ListenAndServe(); err != nil {
@@ -95,7 +100,7 @@ func TestPotReturnOpenPorts(t *testing.T) {
 	}()
 
 	got := getOpenPorts(t, pot.AdminPort)
-	want := fmt.Sprintf("[%d]\n", port)
+	want := fmt.Sprintf("{\"openPorts\":[%d,%d]}\n", port1, port2)
 
 	if want != got {
 		t.Error(cmp.Diff(want, got))

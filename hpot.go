@@ -1,8 +1,10 @@
 package hpot
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -20,6 +22,8 @@ type Pot struct {
 
 	mu      sync.Mutex
 	records []net.Addr
+
+	Log slog.Logger
 }
 
 // NewHoneyPotServer returns default, unstarted HoneyPot
@@ -28,6 +32,7 @@ func NewHoneyPotServer() *Pot {
 	return &Pot{
 		Verbose:   false,
 		AdminPort: 8085,
+		Log:       *slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 	}
 }
 
@@ -58,8 +63,17 @@ func (p *Pot) ListenAndServe() error {
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%d\n", p.NumConnections())
 	})
+
 	mux.HandleFunc("/ports", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%d\n", p.OpenPorts())
+		openPorts := struct {
+			OpenPorts []int `json:"openPorts"`
+		}{
+			OpenPorts: p.OpenPorts(),
+		}
+		err := json.NewEncoder(w).Encode(openPorts)
+		if err != nil {
+			return
+		}
 	})
 
 	s := &http.Server{
@@ -70,9 +84,7 @@ func (p *Pot) ListenAndServe() error {
 	}
 
 	go func() {
-		if p.Verbose {
-			fmt.Println("Starting admin server on:", s.Addr)
-		}
+		p.Log.Info("starting admin server", "port", s.Addr)
 		if err := s.ListenAndServe(); err != nil {
 			panic(err)
 		}
@@ -83,9 +95,7 @@ func (p *Pot) ListenAndServe() error {
 		if err != nil {
 			return err
 		}
-		if p.Verbose {
-			fmt.Println("Starting listener on:", l.Addr().String())
-		}
+		p.Log.Info("starting listener", "port", l.Addr().String())
 		go p.serve(l)
 	}
 	// implement context
@@ -99,13 +109,10 @@ func (p *Pot) serve(l net.Listener) {
 		if err != nil {
 			fmt.Fprintln(os.Stdout, err)
 		}
-		if p.Verbose {
-			fmt.Println("Incomming connection from: ", conn.RemoteAddr())
-		}
+		p.Log.Info("incomming connection", "address", conn.RemoteAddr().String())
 		p.mu.Lock()
 		p.records = append(p.records, conn.RemoteAddr())
 		p.mu.Unlock()
-
 		conn.Close()
 	}
 }
@@ -124,9 +131,9 @@ func parsePorts(ports string) ([]int, error) {
 	return prts, nil
 }
 
-var usage = `Usage: hpot [-v] port,port,port
+var usage = `Usage: hpot [-v] [--admin=port] port1,port2,port3
 
-Start the HopneyPot and listen on incoming connections on provided, coma separated ports.
+Start the HopneyPot and listen on incoming connections on provided, comma-separated ports.
 
 In verbose mode (-v), reports all incoming connections.`
 
